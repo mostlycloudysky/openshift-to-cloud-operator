@@ -1,0 +1,8 @@
+apiVersion: demo.migrate.dev/v1
+kind: Hello
+metadata:
+  name: hello-sample
+  namespace: default
+spec:
+  # TODO(user): Add fields here
+  message: "OpenShift to Cloud Operator is working!"
