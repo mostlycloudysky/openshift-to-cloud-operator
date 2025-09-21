@@ -12,7 +12,7 @@ The operator writes the result into a ConfigMap (`converted.yaml`) that you can 
 
 ---
 
-## End-user Usage (future, when image is published)
+## End-user Usage
 
 > **Note:** This operator is currently experimental and **not production ready**.  
 > Instructions below uses the image is published to Docker Hub. For now, see the [Local Development](#-quick-start-local-development-loop) section.
