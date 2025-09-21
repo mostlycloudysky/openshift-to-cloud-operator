@@ -1,19 +1,3 @@
-/*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package migrate
 
 import (
@@ -21,29 +5,54 @@ import (
 
 	ocpappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
+
+func int32ptr(i int32) *int32 { return &i }
+
+func toLabelSelector(m map[string]string) *metav1.LabelSelector {
+	if m == nil {
+		return &metav1.LabelSelector{}
+	}
+	return &metav1.LabelSelector{MatchLabels: m}
+}
 
 // Convert DeploymentConfigs → Deployments
 func (r *MigrationPlanReconciler) convertDeploymentConfigs(ctx context.Context, ns string) ([]string, int, []string) {
 	var dcs ocpappsv1.DeploymentConfigList
 	var yamlDocs []string
 	var notes []string
+
 	if err := r.List(ctx, &dcs, client.InNamespace(ns)); err != nil {
 		return nil, 0, []string{"error listing DeploymentConfigs: " + err.Error()}
 	}
+
 	for _, dc := range dcs.Items {
-		yamlDocs = append(yamlDocs,
-			"---",
-			"apiVersion: apps/v1",
-			"kind: Deployment",
-			"metadata:",
-			"  name: "+dc.Name,
-			"  namespace: "+dc.Namespace,
-			"  # TODO: copy labels/selector/template",
-		)
+		deploy := appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      dc.Name,
+				Namespace: dc.Namespace,
+				Labels:    dc.Labels,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: int32ptr(dc.Spec.Replicas),        // fix replicas pointer
+				Selector: toLabelSelector(dc.Spec.Selector), // convert map[string]string → LabelSelector
+				Template: *dc.Spec.Template,                 // this part is already compatible
+			},
+		}
+
+		y, _ := yaml.Marshal(deploy)
+		yamlDocs = append(yamlDocs, "---\n"+string(y))
 		notes = append(notes, "Converted DeploymentConfig "+dc.Name+" → Deployment")
 	}
 	return yamlDocs, len(dcs.Items), notes
@@ -54,72 +63,127 @@ func (r *MigrationPlanReconciler) convertRoutes(ctx context.Context, ns string, 
 	var routes routev1.RouteList
 	var yamlDocs []string
 	var notes []string
+
 	if err := r.List(ctx, &routes, client.InNamespace(ns)); err != nil {
 		return nil, 0, []string{"error listing Routes: " + err.Error()}
 	}
+
+	if ingressClass == "" {
+		ingressClass = "nginx"
+	}
+
 	for _, rt := range routes.Items {
-		class := ingressClass
-		if class == "" {
-			class = "nginx"
+		ing := networkingv1.Ingress{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "networking.k8s.io/v1",
+				Kind:       "Ingress",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      rt.Name,
+				Namespace: rt.Namespace,
+				Annotations: map[string]string{
+					"kubernetes.io/ingress.class": ingressClass,
+				},
+			},
+			// Minimal spec (host/path/service mapping could be improved later)
+			Spec: networkingv1.IngressSpec{
+				Rules: []networkingv1.IngressRule{
+					{
+						Host: rt.Spec.Host,
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{
+									{
+										Path:     "/",
+										PathType: func() *networkingv1.PathType { pt := networkingv1.PathTypePrefix; return &pt }(),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: rt.Spec.To.Name,
+												Port: networkingv1.ServiceBackendPort{
+													Number: rt.Spec.Port.TargetPort.IntVal,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}
-		yamlDocs = append(yamlDocs,
-			"---",
-			"apiVersion: networking.k8s.io/v1",
-			"kind: Ingress",
-			"metadata:",
-			"  name: "+rt.Name,
-			"  namespace: "+rt.Namespace,
-			"  annotations:",
-			"    kubernetes.io/ingress.class: "+class,
-			"  # TODO: map host/path/service",
-		)
+
+		y, _ := yaml.Marshal(ing)
+		yamlDocs = append(yamlDocs, "---\n"+string(y))
 		notes = append(notes, "Converted Route "+rt.Name+" → Ingress")
 	}
 	return yamlDocs, len(routes.Items), notes
 }
 
-// Convert Services
+// Convert Services → Services (copy spec)
 func (r *MigrationPlanReconciler) convertServices(ctx context.Context, ns string) ([]string, int, []string) {
 	var svcs corev1.ServiceList
 	var yamlDocs []string
 	var notes []string
+
 	if err := r.List(ctx, &svcs, client.InNamespace(ns)); err != nil {
 		return nil, 0, []string{"error listing Services: " + err.Error()}
 	}
+
 	for _, svc := range svcs.Items {
-		yamlDocs = append(yamlDocs,
-			"---",
-			"apiVersion: v1",
-			"kind: Service",
-			"metadata:",
-			"  name: "+svc.Name,
-			"  namespace: "+svc.Namespace,
-			"  # TODO: copy spec.ports and selectors",
-		)
+		outSvc := corev1.Service{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Service",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+				Labels:    svc.Labels,
+			},
+			Spec: svc.Spec,
+		}
+
+		y, _ := yaml.Marshal(outSvc)
+		yamlDocs = append(yamlDocs, "---\n"+string(y))
 		notes = append(notes, "Processed Service "+svc.Name)
 	}
 	return yamlDocs, len(svcs.Items), notes
 }
 
-// Convert PVCs
+// Convert PVCs → PVCs (preserve spec + remap storageClassName)
 func (r *MigrationPlanReconciler) convertPVCs(ctx context.Context, ns string, targetCloud string) ([]string, int, []string) {
 	var pvcs corev1.PersistentVolumeClaimList
 	var yamlDocs []string
 	var notes []string
+
 	if err := r.List(ctx, &pvcs, client.InNamespace(ns)); err != nil {
 		return nil, 0, []string{"error listing PVCs: " + err.Error()}
 	}
+
 	for _, pvc := range pvcs.Items {
-		yamlDocs = append(yamlDocs,
-			"---",
-			"apiVersion: v1",
-			"kind: PersistentVolumeClaim",
-			"metadata:",
-			"  name: "+pvc.Name,
-			"  namespace: "+pvc.Namespace,
-			"  # TODO: map storageClassName for "+targetCloud,
-		)
-		notes = append(notes, "Processed PVC "+pvc.Name+" (map to storage class for "+targetCloud+")")
+		outPVC := corev1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "PersistentVolumeClaim",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pvc.Name,
+				Namespace: pvc.Namespace,
+				Labels:    pvc.Labels,
+			},
+			Spec: pvc.Spec,
+		}
+
+		// Example: adjust storageClassName for cloud mapping
+		if targetCloud == "eks" {
+			sc := "gp3"
+			outPVC.Spec.StorageClassName = &sc
+		}
+
+		y, _ := yaml.Marshal(outPVC)
+		yamlDocs = append(yamlDocs, "---\n"+string(y))
+		notes = append(notes, "Processed PVC "+pvc.Name+" (mapped for "+targetCloud+")")
 	}
 	return yamlDocs, len(pvcs.Items), notes
 }
