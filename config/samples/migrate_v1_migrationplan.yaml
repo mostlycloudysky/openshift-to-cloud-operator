@@ -1,0 +1,16 @@
+apiVersion: migrate.migrate.dev/v1
+kind: MigrationPlan
+metadata:
+  name: oc-to-cloud-sample
+  namespace: oc-hosted-app
+spec:
+  namespaces:
+    - oc-hosted-app
+  include:
+    - deploymentconfigs
+    - routes
+    - services
+    - pvcs
+  targetCloud: eks
+  ingressClass: alb
+  outputConfigMap: oc-to-cloud-output

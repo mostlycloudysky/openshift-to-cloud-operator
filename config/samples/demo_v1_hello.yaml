@@ -4,5 +4,4 @@ metadata:
   name: hello-sample
   namespace: default
 spec:
-  # TODO(user): Add fields here
-  message: "OpenShift to Cloud Operator is working!"
+  message: "OpenShift to Cloud Operator running in-cluster!"

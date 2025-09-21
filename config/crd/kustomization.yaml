@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/demo.migrate.dev_hellos.yaml
+- bases/migrate.migrate.dev_migrationplans.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

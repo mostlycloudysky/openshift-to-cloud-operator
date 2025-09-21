@@ -22,6 +22,9 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the openshift-to-cloud-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- migrate_migrationplan_admin_role.yaml
+- migrate_migrationplan_editor_role.yaml
+- migrate_migrationplan_viewer_role.yaml
 - hello_admin_role.yaml
 - hello_editor_role.yaml
 - hello_viewer_role.yaml

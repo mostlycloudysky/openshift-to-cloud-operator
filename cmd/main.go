@@ -37,9 +37,14 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	migratev1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/migrate/v1"
 	demov1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/v1"
 	"github.com/mostlycloudysky/openshift-to-cloud-operator/internal/controller"
+	migratecontroller "github.com/mostlycloudysky/openshift-to-cloud-operator/internal/controller/migrate"
+
 	// +kubebuilder:scaffold:imports
+	ocpappsv1 "github.com/openshift/api/apps/v1"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 var (
@@ -51,7 +56,10 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(demov1.AddToScheme(scheme))
+	utilruntime.Must(migratev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+	_ = ocpappsv1.AddToScheme(scheme)
+	_ = routev1.AddToScheme(scheme)
 }
 
 // nolint:gocyclo
@@ -207,6 +215,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Hello")
+		os.Exit(1)
+	}
+	if err := (&migratecontroller.MigrationPlanReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "MigrationPlan")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

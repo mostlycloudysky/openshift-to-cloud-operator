@@ -5,6 +5,7 @@
 domain: migrate.dev
 layout:
 - go.kubebuilder.io/v4
+multigroup: true
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
@@ -19,5 +20,14 @@ resources:
   group: demo
   kind: Hello
   path: github.com/mostlycloudysky/openshift-to-cloud-operator/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: migrate.dev
+  group: migrate
+  kind: MigrationPlan
+  path: github.com/mostlycloudysky/openshift-to-cloud-operator/api/migrate/v1
   version: v1
 version: "3"

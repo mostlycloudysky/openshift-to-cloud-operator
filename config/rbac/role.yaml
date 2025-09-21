@@ -30,3 +30,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - migrate.migrate.dev
+  resources:
+  - migrationplans
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - migrate.migrate.dev
+  resources:
+  - migrationplans/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - migrate.migrate.dev
+  resources:
+  - migrationplans/status
+  verbs:
+  - get
+  - patch
+  - update
