@@ -26,7 +26,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          platforms: linux/amd64,linux/arm64
           tags: |
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/openshift-to-cloud-operator:latest
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/openshift-to-cloud-operator:${{ github.sha }}
