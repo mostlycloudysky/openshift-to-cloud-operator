@@ -2,10 +2,10 @@ apiVersion: migrate.migrate.dev/v1
 kind: MigrationPlan
 metadata:
   name: oc-to-cloud-sample
-  namespace: oc-hosted-app
+  namespace: sky-app
 spec:
   namespaces:
-    - oc-hosted-app
+    - sky-app
   include:
     - deploymentconfigs
     - routes

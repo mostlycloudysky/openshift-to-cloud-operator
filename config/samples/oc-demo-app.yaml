@@ -1,0 +1,70 @@
+# ---------- PersistentVolumeClaim (RWO) ----------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: oc-hosted-app-data
+  labels: { app: oc-hosted-app }
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+  # On OpenShift Local a default StorageClass usually exists (e.g., crc-csi-hostpath).
+  # If your PVC stays Pending, set: storageClassName: crc-csi-hostpath
+
+---
+# ---------- OpenShift Workload: DeploymentConfig ----------
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: oc-hosted-app-api
+  labels: { app: oc-hosted-app, tier: api }
+spec:
+  replicas: 1
+  selector: { app: oc-hosted-app, tier: api }
+  template:
+    metadata:
+      labels: { app: oc-hosted-app, tier: api }
+    spec:
+      containers:
+      - name: api
+        image: docker.io/nginxinc/nginx-unprivileged:stable-alpine
+        ports: [{ containerPort: 8080 }]
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: oc-hosted-app-data
+  triggers:
+  - type: ConfigChange   # DC-specific redeploy trigger
+
+---
+# ---------- Service (targets the DC pods) ----------
+apiVersion: v1
+kind: Service
+metadata:
+  name: oc-hosted-app-api
+  labels: { app: oc-hosted-app }
+spec:
+  selector: { app: oc-hosted-app, tier: api }
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+
+---
+# ---------- Route (OpenShift external URL) ----------
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: oc-hosted-app-api
+  labels: { app: oc-hosted-app }
+spec:
+  to:
+    kind: Service
+    name: oc-hosted-app-api
+  port:
+    targetPort: http
+  # Minimal: no TLS for the demo. You can add spec.tls later (edge/reencrypt/passthrough).

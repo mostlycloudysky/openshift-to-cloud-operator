@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-to-cloud-operator-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openshift-to-cloud-operator
+  namespace: openshift-to-cloud-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openshift-to-cloud-operator-role
+rules:
+- apiGroups: ["migrate.migrate.dev"]
+  resources: ["migrationplans", "migrationplans/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps.openshift.io"]
+  resources: ["deploymentconfigs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["route.openshift.io"]
+  resources: ["routes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "persistentvolumeclaims", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-to-cloud-operator-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openshift-to-cloud-operator-role
+subjects:
+- kind: ServiceAccount
+  name: openshift-to-cloud-operator
+  namespace: openshift-to-cloud-operator-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openshift-to-cloud-operator
+  namespace: openshift-to-cloud-operator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openshift-to-cloud-operator
+  template:
+    metadata:
+      labels:
+        app: openshift-to-cloud-operator
+    spec:
+      serviceAccountName: openshift-to-cloud-operator
+      containers:
+      - name: manager
+        image: docker.io/sandeep1117/openshift-to-cloud-operator:latest
+        command: ["/manager"]

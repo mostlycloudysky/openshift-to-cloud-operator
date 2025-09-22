@@ -5,32 +5,6 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - demo.migrate.dev
-  resources:
-  - hellos
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - demo.migrate.dev
-  resources:
-  - hellos/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - demo.migrate.dev
-  resources:
-  - hellos/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
   - migrate.migrate.dev
   resources:
   - migrationplans

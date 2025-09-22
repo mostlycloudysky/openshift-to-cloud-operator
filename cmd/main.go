@@ -39,7 +39,6 @@ import (
 
 	migratev1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/migrate/v1"
 	demov1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/v1"
-	"github.com/mostlycloudysky/openshift-to-cloud-operator/internal/controller"
 	migratecontroller "github.com/mostlycloudysky/openshift-to-cloud-operator/internal/controller/migrate"
 
 	// +kubebuilder:scaffold:imports
@@ -210,13 +209,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.HelloReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Hello")
-		os.Exit(1)
-	}
 	if err := (&migratecontroller.MigrationPlanReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
