@@ -1,5 +1,7 @@
 # openshift-to-cloud-operator
 
+![Architecture Diagram](openshift-to-cloud-operator.png)
+
 An operator that scans an OpenShift namespace and generates **cloud-portable Kubernetes manifests**.  
 Currently focused on **EKS-compatible output**:
 
@@ -12,127 +14,142 @@ The operator writes the result into a ConfigMap (`converted.yaml`) that you can 
 
 ---
 
-## End-user Usage
+## Installation (via Helm)
 
-> **Note:** This operator is currently experimental and **not production ready**.  
-> Instructions below uses the image is published to Docker Hub. For now, see the [Local Development](#-quick-start-local-development-loop) section.
+The operator is published as a Helm chart at [GitHub Pages](https://mostlycloudysky.github.io/openshift-to-cloud-operator).
+
+1. **Add the Helm repo**
+```bash
+helm repo add oc2c https://mostlycloudysky.github.io/openshift-to-cloud-operator
+helm repo update
+```
+
+2. **Create the namespace**
+```bash
+oc create namespace openshift-to-cloud-operator-system
+```
+
+3. **Install the operator**
+```bash
+helm install oc-to-cloud oc2c/openshift-to-cloud-operator   --namespace openshift-to-cloud-operator-system
+```
+
+4. **Verify**
+```bash
+oc get pods -n openshift-to-cloud-operator-system
+```
+
+---
+
+## Usage
 
 1. **Install CRDs**
-
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/mostlycloudysky/openshift-to-cloud-operator/main/config/crd/bases/migrate.migrate.dev_migrationplans.yaml
 ```
 
-2. **Deploy the operator from Docker Hub**
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/mostlycloudysky/openshift-to-cloud-operator/main/deploy/install.yaml
-```
-
-3. **Create a MigrationPlan**
-   
-```yml
+2. **Create a MigrationPlan**
+```yaml
 apiVersion: migrate.migrate.dev/v1
 kind: MigrationPlan
 metadata:
   name: oc-to-cloud-sample
-  namespace: oc-hosted-app
+  namespace: sky-app
 spec:
-  namespaces: ["oc-hosted-app"]
+  namespaces: ["sky-app"]
   include: ["deploymentconfigs","routes","services","pvcs"]
   targetCloud: "eks"
   ingressClass: "alb"
   outputConfigMap: "oc-to-cloud-output"
 ```
 
-4. **Fetch the converted YAML**
-
 ```bash
-kubectl get cm oc-to-cloud-output -n oc-hosted-app -o jsonpath='{.data.converted\.yaml}' > converted.yaml
+oc apply -f migrationplan.yaml
+```
+
+3. **Check the status**
+```bash
+oc get migrationplan oc-to-cloud-sample -n sky-app -o yaml
+```
+
+4. **Fetch the converted YAML**
+```bash
+oc get cm oc-to-cloud-output -n sky-app -o jsonpath='{.data.converted\.yaml}' > converted.yaml
 kubectl --context my-eks apply -f converted.yaml
 ```
 
+---
+
 ## Features
 
-- Automatically discovers OpenShift resources (DeploymentConfig, Route, Service, PVC) in one or more namespaces.
+- Discovers OpenShift resources (`DeploymentConfig`, `Route`, `Service`, `PVC`) in one or more namespaces.
 - Converts them into standard Kubernetes YAML.
-- Adds cloud portability hints:
-- IngressClass for ALB, NGINX, etc.
-- storageClassName mapping for EKS (gp3).
+- Adds portability hints:
+  - IngressClass for ALB, NGINX, etc.
+  - storageClassName mapping for EKS (gp3).
 - Outputs a multi-doc YAML bundle inside a ConfigMap for easy export.
 
-## Prerequisites (for local dev/testing)
+---
 
-1. Go 1.22+
-2. operator-sdk
-3. kubectl and/or oc
-4. Access to an OpenShift cluster (OpenShift Local / CRC works great!)
-5. (Optional) Docker Hub account if you want to publish your own image
+## 🔧 Development (Local Loop)
 
-## Quick Start (Local Development Loop)
-
-1. Generate CRDs and install them into the cluster
-
+1. Generate CRDs and install them:
 ```bash
 make generate
 make install
 ```
 
-2. Run the operator locally
-
+2. Run the operator locally:
 ```bash
 make run
 ```
 
-3. Apply a sample MigrationPlan
-
-```yml
-# config/samples/migrate_v1_migrationplan.yaml
-apiVersion: migrate.migrate.dev/v1
-kind: MigrationPlan
-metadata:
-  name: oc-to-cloud-sample
-  namespace: oc-hosted-app
-spec:
-  namespaces: ["oc-hosted-app"]
-  include: ["deploymentconfigs","routes","services","pvcs"]
-  targetCloud: "eks"
-  ingressClass: "alb"
-  outputConfigMap: "oc-to-cloud-output"
-```
-
-4. Apply it. 
-
+3. Apply a sample MigrationPlan:
 ```bash
 oc apply -f config/samples/migrate_v1_migrationplan.yaml
 ```
 
-5. Inspect the results
-
+4. Inspect results:
 ```bash
-oc get migrationplan oc-to-cloud-sample -n oc-hosted-app -o yaml
+oc get migrationplan oc-to-cloud-sample -n sky-app -o yaml
+oc get cm oc-to-cloud-output -n sky-app -o yaml
 ```
 
-6. Extract the converted YAML bundle:
+---
 
-```bash
-oc get cm oc-to-cloud-output -n oc-hosted-app -o jsonpath='{.data.converted\.yaml}' > converted.yaml
-```
+## 📦 Building & Publishing
 
-## Building & Deploying (Optional)
-
-1. Build and push the image
+1. Build and push your image:
 ```bash
 make docker-build IMG=docker.io/<your-user>/openshift-to-cloud-operator:latest
 make docker-push  IMG=docker.io/<your-user>/openshift-to-cloud-operator:latest
 ```
 
-2. Deploy the operator
+2. Deploy with your image:
 ```bash
 make deploy IMG=docker.io/<your-user>/openshift-to-cloud-operator:latest
 ```
 
-3. Verify the operator pod
+3. Verify:
 ```bash
 kubectl get pods -n openshift-to-cloud-operator-system
+```
+
+---
+
+## 🧹 Uninstall / Reset
+
+To uninstall the operator and cleanup:
+
+```bash
+helm uninstall oc-to-cloud -n openshift-to-cloud-operator-system --keep-history
+oc delete ns openshift-to-cloud-operator-system --ignore-not-found
+```
+
+If the namespace gets stuck in `Terminating`, clear finalizers:
+
+```bash
+oc get namespace openshift-to-cloud-operator-system -o json \
+  | jq '.spec.finalizers = []' \
+  | oc replace --raw "/api/v1/namespaces/openshift-to-cloud-operator-system/finalize" -f -
 ```
