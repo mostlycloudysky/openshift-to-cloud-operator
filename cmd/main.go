@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	migratev1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/migrate/v1"
-	demov1 "github.com/mostlycloudysky/openshift-to-cloud-operator/api/v1"
 	migratecontroller "github.com/mostlycloudysky/openshift-to-cloud-operator/internal/controller/migrate"
 
 	// +kubebuilder:scaffold:imports
@@ -54,7 +53,6 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(demov1.AddToScheme(scheme))
 	utilruntime.Must(migratev1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 	_ = ocpappsv1.AddToScheme(scheme)
