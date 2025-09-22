@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openshift-to-cloud-operator
+  namespace: '{{ .Values.namespace }}'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openshift-to-cloud-operator
+  template:
+    metadata:
+      labels:
+        app: openshift-to-cloud-operator
+    spec:
+      serviceAccountName: openshift-to-cloud-operator
+      containers:
+        - name: manager
+          image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
+          command: ['/manager']
+          imagePullPolicy: IfNotPresent

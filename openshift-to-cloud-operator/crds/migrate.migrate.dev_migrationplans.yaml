@@ -1,0 +1,101 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: migrationplans.migrate.migrate.dev
+spec:
+  group: migrate.migrate.dev
+  names:
+    kind: MigrationPlan
+    listKind: MigrationPlanList
+    plural: migrationplans
+    singular: migrationplan
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: MigrationPlan is the Schema for the migrationplans API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MigrationPlanSpec defines the desired state of MigrationPlan.
+            properties:
+              include:
+                description: |-
+                  Which resource kinds to include (case-insensitive):
+                  e.g., ["deploymentconfigs","routes","services","pvcs"]
+                items:
+                  type: string
+                type: array
+              ingressClass:
+                description: |-
+                  Ingress class hint for Route -> Ingress conversion
+                  e.g., "alb" (EKS), "azure/application-gateway" (AKS), "gce" (GKE), "nginx"
+                type: string
+              namespaces:
+                description: |-
+                  Namespaces in the source OpenShift cluster to scan.
+                  If empty, default to the CR's namespace.
+                items:
+                  type: string
+                type: array
+              outputConfigMap:
+                description: |-
+                  Name of the ConfigMap (in the same namespace) where the operator
+                  will write the generated manifests as data["converted.yaml"].
+                  If empty, defaults to "<CR name>-output".
+                type: string
+              targetCloud:
+                description: |-
+                  Target cloud to guide small deltas in output:
+                  "eks" | "aks" | "gke" | "vanilla"
+                type: string
+            type: object
+          status:
+            description: MigrationPlanStatus defines the observed state of MigrationPlan.
+            properties:
+              found:
+                additionalProperties:
+                  type: integer
+                description: |-
+                  Counts of discovered resources by kind, e.g.:
+                  { "deploymentconfigs": 1, "routes": 1, "services": 1, "persistentvolumeclaims": 1 }
+                type: object
+              notes:
+                description: Notes / warnings for the user (e.g., "PVC RWO -> EBS
+                  (gp3)")
+                items:
+                  type: string
+                type: array
+              output:
+                description: The actual ConfigMap name used for output (resolved from
+                  spec.OutputConfigMap)
+                type: string
+              phase:
+                description: 'Phase of processing: "Scanning" | "Generated" | "Error"'
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

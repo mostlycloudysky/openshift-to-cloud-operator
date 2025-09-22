@@ -1,0 +1,12 @@
+namespace: openshift-to-cloud-operator-system
+
+image:
+  repository: docker.io/sandeep1117/openshift-to-cloud-operator
+  tag: latest
+
+sample:
+  namespace: sky-app
+  sourceNamespace: sky-app
+  targetCloud: eks
+  ingressClass: alb
+  outputConfigMap: oc-to-cloud-output
