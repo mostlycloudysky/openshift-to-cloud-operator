@@ -25,7 +25,4 @@ resources:
 - migrate_migrationplan_admin_role.yaml
 - migrate_migrationplan_editor_role.yaml
 - migrate_migrationplan_viewer_role.yaml
-- hello_admin_role.yaml
-- hello_editor_role.yaml
-- hello_viewer_role.yaml
 

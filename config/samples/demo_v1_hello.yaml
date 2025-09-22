@@ -1,7 +1,0 @@
-apiVersion: demo.migrate.dev/v1
-kind: Hello
-metadata:
-  name: hello-sample
-  namespace: default
-spec:
-  message: "OpenShift to Cloud Operator running in-cluster!"

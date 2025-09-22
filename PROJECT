@@ -17,15 +17,6 @@ resources:
     namespaced: true
   controller: true
   domain: migrate.dev
-  group: demo
-  kind: Hello
-  path: github.com/mostlycloudysky/openshift-to-cloud-operator/api/v1
-  version: v1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: migrate.dev
   group: migrate
   kind: MigrationPlan
   path: github.com/mostlycloudysky/openshift-to-cloud-operator/api/migrate/v1

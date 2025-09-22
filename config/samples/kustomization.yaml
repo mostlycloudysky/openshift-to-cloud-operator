@@ -1,5 +1,4 @@
 ## Append samples of your project ##
 resources:
-- demo_v1_hello.yaml
 - migrate_v1_migrationplan.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
